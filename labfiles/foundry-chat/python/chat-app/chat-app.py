@@ -1,23 +1,31 @@
+from asyncio import streams
 import os
+from urllib import response
 from dotenv import load_dotenv
 
 # import namespaces
+from openai import OpenAI
+# from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
-
-
-def main(): 
+def main():
+    print("Welcome to the Azure OpenAI Chat App!")
     # Clear the console
     os.system('cls' if os.name == 'nt' else 'clear')
 
     try:
-        # Get configuration settings 
+        # Get configuration settings
         load_dotenv()
         azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         model_deployment = os.getenv("MODEL_DEPLOYMENT")
 
         # Initialize the OpenAI client
-        
+        client = OpenAI(
+            base_url = azure_openai_endpoint,
+            api_key = os.getenv("AZURE_OPEN_AI_KEY"),
+        )
 
+        # Track Responses
+        last_response_id = None
 
         # Loop until the user wants to quit
         while True:
@@ -27,12 +35,25 @@ def main():
             if len(input_text) == 0:
                 print("Please enter a prompt.")
                 continue
-
+            print("Previous response ID:", last_response_id)
             # Get a response
-            
+            stream = client.responses.create(
+                model = model_deployment,
+                instructions="You are a helpful AI assistant that answers questions and provides information.",
+                input = input_text,
+                previous_response_id = last_response_id,
+                stream = True
+            )
+
+            for event in stream:
+                if event.type == "response.output_text.delta":
+                    print(event.delta, end ="", flush = True)
+                elif event.type == "response.completed":
+                    last_response_id = event.response.id
+            print()
 
     except Exception as ex:
         print(ex)
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     main()
